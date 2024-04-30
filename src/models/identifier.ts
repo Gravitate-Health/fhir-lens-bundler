@@ -8,6 +8,6 @@ export class Identifier {
     }
 
     public static defaultValues(): Identifier {
-        return new Identifier("http://non-existen.com", "lens"); // TO-DO: Revise to adapt to the real version 
+        return new Identifier("http://non-existent.com", "lens"); // TO-DO: Revise to adapt to the real version 
     }
 }
