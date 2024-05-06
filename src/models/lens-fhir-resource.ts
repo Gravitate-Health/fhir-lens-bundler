@@ -5,17 +5,13 @@ import { Identifier } from "./identifier.js";
 import { Jurisdiction } from "./jurisdiction.js";
 import { Meta } from "./meta.js";
 import { Parameter } from "./parameter.js";
-import { TextResource } from "./text-resource.js";
 import { Type } from "./type.js";
+import { Contact } from "./contact.js"; // Add this import statement
 
 export class LensFhirResource {
     resourceType: string;
 
-    id: string;
-
     meta: Meta;
-
-    text: TextResource;
 
     extension: Extension[];
 
@@ -56,11 +52,9 @@ export class LensFhirResource {
     content: Content[];
 
     // eslint-disable-next-line max-params
-    private constructor(resourceType: string, id: string, meta: Meta, text: TextResource, extension: Extension[], url: string, identifier: Identifier[], version: string, name: string, title: string, status: string, experimental: boolean, type: Type, date: string, publisher: string, contact: Contact[], description: string, jurisdiction: Jurisdiction[], purpose: string, usage: string, copyright: string, parameter: Parameter[], content: Content[]) {
+    private constructor(resourceType: string, meta: Meta, extension: Extension[], url: string, identifier: Identifier[], version: string, name: string, title: string, status: string, experimental: boolean, type: Type, publisher: string, contact: Contact[], description: string, jurisdiction: Jurisdiction[], purpose: string, usage: string, copyright: string, parameter: Parameter[], content: Content[]) {
         this.resourceType = resourceType;
-        this.id = id;
         this.meta = meta;
-        this.text = text;
         this.extension = extension;
         this.url = url;
         this.identifier = identifier;
@@ -70,7 +64,6 @@ export class LensFhirResource {
         this.status = status;
         this.experimental = experimental;
         this.type = type;
-        this.date = date;
         this.publisher = publisher;
         this.contact = contact;
         this.description = description;
@@ -81,34 +74,32 @@ export class LensFhirResource {
         this.parameter = parameter;
         this.content = content;
     }
+    // ...
 
-    static newEmptyLens(): LensFhirResource {
-        return new LensFhirResource(
-            "",
-            "",
-            new Meta(),
-            TextResource.defaultValues(),
-            [],
-            "",
-            [],
-            "",
-            "",
-            "",
-            "",
-            false,
-            Type.defaultValues(),
-            "",
-            "",
-            [],
-            "",
-            [],
-            "",
-            "",
-            "",
-            [],
-            []
-        );
-    }
+        static defaultValues(name: string, lens: string): LensFhirResource {
+            return new LensFhirResource(
+                "Library",
+                new Meta(),
+                [Extension.defaultValues()],
+                "http://hl7.eu/fhir/ig/gravitate-health/Library/mock-lib",
+                [new Identifier("http://gravitate-health.lst.tfo.upm.es", name)],
+                "0.0.1",
+                name,
+                name,
+                "draft",
+                true,
+                Type.defaultValues(),
+                "Gravitate Health Project - UPM Team",
+                [Contact.defaultValues()], // Add the missing Contact parameter
+                "Description to be specified",
+                [Jurisdiction.defaultValues()],
+                "Purpose yo be specified",
+                "Usage to be specified",
+                "© 2024 Gravitate Health",
+                [Parameter.defaultValues()],
+                [new Content('application/javascript', lens)]
+            );
+        }
 
     
 }

@@ -1,8 +1,9 @@
 import {Args, Command, Flags} from '@oclif/core'
+import * as fs from 'node:fs'
 
 export default class Bundle extends Command {
   static args = {
-    file: Args.string({description: 'file to read', required: false}),
+    file: Args.string({description: 'file to read', required: true}),
   }
 
   static description = 'Bundles raw lenses into a FHIR compliant single file.'
@@ -13,16 +14,20 @@ export default class Bundle extends Command {
 
   static flags = {
     // flag with no value (-f, --force)
-    force: Flags.boolean({char: 'f'}),
+    default: Flags.boolean({char: 'd'}),
+    name: Flags.string({char: 'n', description: 'name to apply to lens'}),
   }
 
   public async run(): Promise<void> {
-    const {args, flags} = await this.parse(Bundle)
+    const {args, flags} = await this.parse(Bundle);
 
-    const name = flags.name ?? 'world'
-    this.log(`hello ${name} from /home/aalonso/LST/GravitateHealth/fhir-lens-bundler/src/commands/bundle.ts`)
-    if (args.file && flags.force) {
-      this.log(`you input --force and --file: ${args.file}`)
-    }
+    this.getFileData(args.file);
+  }
+
+  private getFileData(file: string): string {
+    console.log('Opening file:', file)
+    const fileData = fs.readFileSync(file, 'utf8')
+
+    return fileData;
   }
 }
