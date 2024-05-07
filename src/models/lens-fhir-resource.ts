@@ -5,8 +5,7 @@ import { Identifier } from "./identifier.js";
 import { Jurisdiction } from "./jurisdiction.js";
 import { Meta } from "./meta.js";
 import { Parameter } from "./parameter.js";
-import { Type } from "./type.js";
-import { Contact } from "./contact.js"; // Add this import statement
+import { Type } from "./type.js"; // Add this import statement
 
 export class LensFhirResource {
     resourceType: string;
@@ -23,6 +22,8 @@ export class LensFhirResource {
 
     name: string;
 
+    date: string;
+
     title: string;
 
     status: string;
@@ -30,8 +31,6 @@ export class LensFhirResource {
     experimental: boolean;
 
     type: Type;
-
-    date: string;
 
     publisher: string;
 
@@ -54,6 +53,7 @@ export class LensFhirResource {
     // eslint-disable-next-line max-params
     private constructor(resourceType: string, meta: Meta, extension: Extension[], url: string, identifier: Identifier[], version: string, name: string, title: string, status: string, experimental: boolean, type: Type, publisher: string, contact: Contact[], description: string, jurisdiction: Jurisdiction[], purpose: string, usage: string, copyright: string, parameter: Parameter[], content: Content[]) {
         this.resourceType = resourceType;
+        this.date = new Date().toISOString();
         this.meta = meta;
         this.extension = extension;
         this.url = url;
@@ -100,6 +100,4 @@ export class LensFhirResource {
                 [new Content('application/javascript', lens)]
             );
         }
-
-    
 }
