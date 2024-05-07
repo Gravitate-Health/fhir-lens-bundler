@@ -1,7 +1,10 @@
 import { Args, Command, Flags } from '@oclif/core'
 import * as fs from 'node:fs'
+import ora from 'ora'
 
 import { LensFhirResource } from '../models/lens-fhir-resource.js'
+
+const spinner = ora();
 
 export default class Bundle extends Command {
   static args = {
@@ -23,23 +26,30 @@ export default class Bundle extends Command {
   public async run(): Promise<void> {
     const {args, flags} = await this.parse(Bundle);
 
+    spinner.start('Starting process...');
+
     if(flags.default) this.bundleLensesDefaultInformaton(args.file, flags.name);
     else this.bundleLensesInteractive();
   }
 
   private bundleLensesDefaultInformaton(file: string, name: string): void {
-    console.log('Bundling lenses with default information');
-    console.log('Retrieving file data...');
+    this.changeSpinnerText('Bundling lenses with default information');
+    this.changeSpinnerText('Retrieving file data...');
     const fileData = this.getFileData(file);
-    console.log('Converting file data to base64...');
+    this.stopAndPersistSpinner('File data retrieved');
+    this.changeSpinnerText('Converting file data to base64...');
     const base64FileData = this.stringTobase64(fileData);
-    console.log('Making bundle with name:', name);
+    this.stopAndPersistSpinner('File data converted to base64');
+    this.changeSpinnerText(`Making bundle with name: ${name}`);
     const bundle = LensFhirResource.defaultValues(name, base64FileData);
-    console.log('Bundle:', JSON.stringify(bundle));
-    console.log('Writing bundle to file...');
+    this.stopAndPersistSpinner('Bundle created');
+    this.changeSpinnerText('Writing bundle to file...')
     this.writeBundleToFile(bundle);
-    console.log('Bundle written to file:', `${bundle.name}.json`);
-    console.log('Done!');
+    this.stopAndPersistSpinner(`Bundle written to file: ${bundle.name}.json`);
+    spinner.stopAndPersist({
+      symbol: '⭐',
+      text: 'Process complete',
+    });
   }
 
   private bundleLensesInteractive(): void {
@@ -49,7 +59,7 @@ export default class Bundle extends Command {
 
   private getFileData(file: string): string {
     let fileData;
-    console.log('Opening file:', file);
+    this.changeSpinnerText(`Opening file... ${file}`);
     try {
       fileData = fs.readFileSync(file, 'utf8');
     } catch (error) {
@@ -78,5 +88,16 @@ export default class Bundle extends Command {
       console.log('Error writing bundle to file:', error);
       throw error;
     }
+  }
+
+  private stopAndPersistSpinner(text: string): void {
+    spinner.stopAndPersist({
+      symbol: '✔',
+      text,
+    });
+  }
+
+  private changeSpinnerText(text: string): void {
+    spinner.text = text;
   }
 }
