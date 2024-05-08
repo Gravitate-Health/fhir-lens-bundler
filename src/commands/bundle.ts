@@ -1,7 +1,7 @@
 import { Args, Command, Flags } from '@oclif/core'
-import * as fs from 'node:fs'
 import ora from 'ora'
 
+import { getFileData, writeBundleToFile } from '../controllers/file-controller.js';
 import { changeSpinnerText, stopAndPersistSpinner } from '../controllers/spinner-controller.js'
 import { LensFhirResource } from '../models/lens-fhir-resource.js'
 
@@ -36,7 +36,7 @@ export default class Bundle extends Command {
   private bundleLensesDefaultInformaton(file: string, name: string): void {
     changeSpinnerText('Bundling lenses with default information', spinner);
     changeSpinnerText('Retrieving file data...', spinner);
-    const fileData = this.getFileData(file);
+    const fileData = getFileData(file);
     stopAndPersistSpinner('File data retrieved', spinner);
     changeSpinnerText('Converting file data to base64...', spinner);
     const base64FileData = this.stringTobase64(fileData);
@@ -45,7 +45,7 @@ export default class Bundle extends Command {
     const bundle = LensFhirResource.defaultValues(name, base64FileData);
     stopAndPersistSpinner('Bundle created', spinner);
     changeSpinnerText('Writing bundle to file...', spinner)
-    this.writeBundleToFile(bundle);
+    writeBundleToFile(bundle);
     stopAndPersistSpinner(`Bundle written to file: ${bundle.name}.json`, spinner);
     spinner.stopAndPersist({
       symbol: '⭐',
@@ -58,35 +58,11 @@ export default class Bundle extends Command {
     console.log('Still under construction...');
   }
 
-  private getFileData(file: string): string {
-    let fileData;
-    changeSpinnerText(`Opening file... ${file}`, spinner);
-    try {
-      fileData = fs.readFileSync(file, 'utf8');
-    } catch (error) {
-      console.log('Error reading file:', error);
-      throw error;
-    }
-
-    return fileData;
-  }
-
   private stringTobase64(str: string): string {
     try {
       return Buffer.from(str, 'binary').toString('base64');
     } catch (error) {
       console.log('Error converting string to base64:', error);
-      throw error;
-    }
-  }
-
-  private writeBundleToFile(bundle: LensFhirResource): void {
-    const bundleJson = JSON.stringify(bundle, null, 2);
-    const bundleFileName = `${bundle.name}.json`;
-    try {
-      fs.writeFileSync(bundleFileName, bundleJson);
-    } catch (error) {
-      console.log('Error writing bundle to file:', error);
       throw error;
     }
   }
