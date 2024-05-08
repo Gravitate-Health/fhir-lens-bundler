@@ -2,6 +2,7 @@ import { Args, Command, Flags } from '@oclif/core'
 import * as fs from 'node:fs'
 import ora from 'ora'
 
+import { changeSpinnerText, stopAndPersistSpinner } from '../controllers/spinner-controller.js'
 import { LensFhirResource } from '../models/lens-fhir-resource.js'
 
 const spinner = ora();
@@ -33,19 +34,19 @@ export default class Bundle extends Command {
   }
 
   private bundleLensesDefaultInformaton(file: string, name: string): void {
-    this.changeSpinnerText('Bundling lenses with default information');
-    this.changeSpinnerText('Retrieving file data...');
+    changeSpinnerText('Bundling lenses with default information', spinner);
+    changeSpinnerText('Retrieving file data...', spinner);
     const fileData = this.getFileData(file);
-    this.stopAndPersistSpinner('File data retrieved');
-    this.changeSpinnerText('Converting file data to base64...');
+    stopAndPersistSpinner('File data retrieved', spinner);
+    changeSpinnerText('Converting file data to base64...', spinner);
     const base64FileData = this.stringTobase64(fileData);
-    this.stopAndPersistSpinner('File data converted to base64');
-    this.changeSpinnerText(`Making bundle with name: ${name}`);
+    stopAndPersistSpinner('File data converted to base64', spinner);
+    changeSpinnerText(`Making bundle with name: ${name}`, spinner);
     const bundle = LensFhirResource.defaultValues(name, base64FileData);
-    this.stopAndPersistSpinner('Bundle created');
-    this.changeSpinnerText('Writing bundle to file...')
+    stopAndPersistSpinner('Bundle created', spinner);
+    changeSpinnerText('Writing bundle to file...', spinner)
     this.writeBundleToFile(bundle);
-    this.stopAndPersistSpinner(`Bundle written to file: ${bundle.name}.json`);
+    stopAndPersistSpinner(`Bundle written to file: ${bundle.name}.json`, spinner);
     spinner.stopAndPersist({
       symbol: '⭐',
       text: 'Process complete',
@@ -59,7 +60,7 @@ export default class Bundle extends Command {
 
   private getFileData(file: string): string {
     let fileData;
-    this.changeSpinnerText(`Opening file... ${file}`);
+    changeSpinnerText(`Opening file... ${file}`, spinner);
     try {
       fileData = fs.readFileSync(file, 'utf8');
     } catch (error) {
@@ -88,16 +89,5 @@ export default class Bundle extends Command {
       console.log('Error writing bundle to file:', error);
       throw error;
     }
-  }
-
-  private stopAndPersistSpinner(text: string): void {
-    spinner.stopAndPersist({
-      symbol: '✔',
-      text,
-    });
-  }
-
-  private changeSpinnerText(text: string): void {
-    spinner.text = text;
   }
 }
