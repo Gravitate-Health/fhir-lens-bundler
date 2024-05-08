@@ -1,14 +1,13 @@
-export function uploadLenses(data: string, domain: string): void {
-    const jsonData = JSON.parse(data);
+export function uploadLenses(data: string, domain: string): Promise<Response> {
     const url = `${domain}/ips/api/fhir/Library`;
 
     const options = {
-        body: jsonData,
+        body: data,
         headers: {
             'Content-Type': 'application/json',
         },
         method: 'POST',
     };
 
-    fetch(url, options);
+    return fetch(url, options);
 }
