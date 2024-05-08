@@ -1,7 +1,8 @@
 import { Args, Command, Flags } from '@oclif/core'
-import * as fs from 'node:fs'
 import ora from 'ora'
 
+import { getFileData, writeBundleToFile } from '../controllers/file-controller.js';
+import { changeSpinnerText, stopAndPersistSpinner } from '../controllers/spinner-controller.js'
 import { LensFhirResource } from '../models/lens-fhir-resource.js'
 
 const spinner = ora();
@@ -33,19 +34,19 @@ export default class Bundle extends Command {
   }
 
   private bundleLensesDefaultInformaton(file: string, name: string): void {
-    this.changeSpinnerText('Bundling lenses with default information');
-    this.changeSpinnerText('Retrieving file data...');
-    const fileData = this.getFileData(file);
-    this.stopAndPersistSpinner('File data retrieved');
-    this.changeSpinnerText('Converting file data to base64...');
+    changeSpinnerText('Bundling lenses with default information', spinner);
+    changeSpinnerText('Retrieving file data...', spinner);
+    const fileData = getFileData(file);
+    stopAndPersistSpinner('File data retrieved', spinner);
+    changeSpinnerText('Converting file data to base64...', spinner);
     const base64FileData = this.stringTobase64(fileData);
-    this.stopAndPersistSpinner('File data converted to base64');
-    this.changeSpinnerText(`Making bundle with name: ${name}`);
+    stopAndPersistSpinner('File data converted to base64', spinner);
+    changeSpinnerText(`Making bundle with name: ${name}`, spinner);
     const bundle = LensFhirResource.defaultValues(name, base64FileData);
-    this.stopAndPersistSpinner('Bundle created');
-    this.changeSpinnerText('Writing bundle to file...')
-    this.writeBundleToFile(bundle);
-    this.stopAndPersistSpinner(`Bundle written to file: ${bundle.name}.json`);
+    stopAndPersistSpinner('Bundle created', spinner);
+    changeSpinnerText('Writing bundle to file...', spinner)
+    writeBundleToFile(bundle);
+    stopAndPersistSpinner(`Bundle written to file: ${bundle.name}.json`, spinner);
     spinner.stopAndPersist({
       symbol: '⭐',
       text: 'Process complete',
@@ -57,19 +58,6 @@ export default class Bundle extends Command {
     console.log('Still under construction...');
   }
 
-  private getFileData(file: string): string {
-    let fileData;
-    this.changeSpinnerText(`Opening file... ${file}`);
-    try {
-      fileData = fs.readFileSync(file, 'utf8');
-    } catch (error) {
-      console.log('Error reading file:', error);
-      throw error;
-    }
-
-    return fileData;
-  }
-
   private stringTobase64(str: string): string {
     try {
       return Buffer.from(str, 'binary').toString('base64');
@@ -77,27 +65,5 @@ export default class Bundle extends Command {
       console.log('Error converting string to base64:', error);
       throw error;
     }
-  }
-
-  private writeBundleToFile(bundle: LensFhirResource): void {
-    const bundleJson = JSON.stringify(bundle, null, 2);
-    const bundleFileName = `${bundle.name}.json`;
-    try {
-      fs.writeFileSync(bundleFileName, bundleJson);
-    } catch (error) {
-      console.log('Error writing bundle to file:', error);
-      throw error;
-    }
-  }
-
-  private stopAndPersistSpinner(text: string): void {
-    spinner.stopAndPersist({
-      symbol: '✔',
-      text,
-    });
-  }
-
-  private changeSpinnerText(text: string): void {
-    spinner.text = text;
   }
 }
