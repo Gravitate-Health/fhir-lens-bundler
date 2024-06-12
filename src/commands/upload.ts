@@ -30,12 +30,10 @@ export default class Upload extends Command {
     const fileData = getFileData(args.file);
     spinnerController.stopAndPersistSpinner('File data retrieved', spinner);
     spinnerController.changeSpinnerText('Uploading lenses...', spinner);
-    const uploadedLens = await uploadLenses(fileData, flags.domain);
+    await uploadLenses(fileData, flags.domain);
     spinner.stopAndPersist({
       symbol: '⭐',
       text: 'Process complete',
     });
-    spinner.succeed('Upload complete. This is the uploaded lens:');
-    console.log(await uploadedLens.json());
   }
 }
