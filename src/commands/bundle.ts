@@ -21,7 +21,7 @@ export default class Bundle extends Command {
 
   static flags = {
     // flag with no value (-f, --force)
-    default: Flags.boolean  ({ char: 'd', description: 'use default values for the bundle', required: true}),
+    default: Flags.boolean  ({ char: 'd', description: 'use default values for the bundle', required: false}),
     name: Flags.string({ char: 'n', description: 'name to apply to lens', required: true }),
   }
 
