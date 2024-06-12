@@ -1,4 +1,5 @@
 import { Args, Command, Flags } from '@oclif/core'
+import inquirer from 'inquirer';
 import ora from 'ora'
 
 import { getFileData, writeBundleToFile } from '../controllers/file-controller.js';
@@ -9,7 +10,7 @@ const spinner = ora();
 
 export default class Bundle extends Command {
   static args = {
-    file: Args.string({description: 'file to read', required: true}),
+    file: Args.string({ description: 'file to read', required: true }),
   }
 
   static description = 'Bundles raw lenses into a FHIR compliant single file.'
@@ -20,17 +21,17 @@ export default class Bundle extends Command {
 
   static flags = {
     // flag with no value (-f, --force)
-    default: Flags.boolean({char: 'd', default: true, description: 'bundle lenses with default information (always set as true for now)'}),
-    name: Flags.string({char: 'n', description: 'name to apply to lens', required: true}),
+    default: Flags.boolean({ char: 'd', default: true, description: 'bundle lenses with default information (always set as true for now)' }),
+    name: Flags.string({ char: 'n', description: 'name to apply to lens', required: true }),
   }
 
   public async run(): Promise<void> {
-    const {args, flags} = await this.parse(Bundle);
+    const { args, flags } = await this.parse(Bundle);
 
     spinner.start('Starting process...');
 
-    if(flags.default) this.bundleLensesDefaultInformaton(args.file, flags.name);
-    else this.bundleLensesInteractive();
+    if (flags.default) this.bundleLensesDefaultInformaton(args.file, flags.name);
+    else this.bundleLensesInteractive(args.file, flags.name);
   }
 
   private bundleLensesDefaultInformaton(file: string, name: string): void {
@@ -53,9 +54,49 @@ export default class Bundle extends Command {
     });
   }
 
-  private bundleLensesInteractive(): void {
-    console.log('Bundling lenses interactively');
-    console.log('Still under construction...');
+  private bundleLensesInteractive(file: string, name: string): void {
+    changeSpinnerText('Bundling lenses', spinner);
+    changeSpinnerText('Retrieving file data...', spinner);
+    const fileData = getFileData(file);
+    stopAndPersistSpinner('File data retrieved', spinner);
+    changeSpinnerText('Converting file data to base64...', spinner);
+    const base64FileData = this.stringTobase64(fileData);
+    stopAndPersistSpinner('File data converted to base64', spinner);
+
+    inquirer.prompt([
+      {
+        default: name,
+        message: 'Enter the name of the bundle:',
+        name: 'name',
+        type: 'input',
+      },
+      {
+        message: 'Enter a description for the bundle:',
+        name: 'description',
+        type: 'input',
+      },
+      {
+        message: 'Enter the usage of the bundle:',
+        name: 'usage',
+        type: 'input',
+      },
+      {
+        message: 'Enter the purpose of the bundle:',
+        name: 'purpose',
+        type: 'input',
+      }
+    ]).then((answers) => {
+      changeSpinnerText(`Making bundle with name: ${answers.name}`, spinner);
+      const bundle = LensFhirResource.interactiveValues(answers.name, answers.description, answers.purpose, answers.usage, base64FileData);
+      stopAndPersistSpinner('Bundle created', spinner);
+      changeSpinnerText('Writing bundle to file...', spinner)
+      writeBundleToFile(bundle);
+      stopAndPersistSpinner(`Bundle written to file: ${bundle.name}.json`, spinner);
+      spinner.stopAndPersist({
+        symbol: '⭐',
+        text: 'Process complete',
+      });
+    });
   }
 
   private stringTobase64(str: string): string {

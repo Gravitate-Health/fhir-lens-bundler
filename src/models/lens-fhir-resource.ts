@@ -100,4 +100,30 @@ export class LensFhirResource {
                 [new Content('application/javascript', lens)]
             );
         }
+
+        // eslint-disable-next-line max-params
+        static interactiveValues(name: string, description: string, purpose: string, usage: string, lens: string): LensFhirResource {
+            return new LensFhirResource(
+                "Library",
+                new Meta(),
+                [Extension.defaultValues()],
+                "http://hl7.eu/fhir/ig/gravitate-health/Library/mock-lib",
+                [new Identifier("http://gravitate-health.lst.tfo.upm.es", name)],
+                "0.0.1",
+                name,
+                name,
+                "draft",
+                true,
+                Type.defaultValues(),
+                "Gravitate Health Project - UPM Team",
+                [Contact.defaultValues()], // Add the missing Contact parameter
+                description,
+                [Jurisdiction.defaultValues()],
+                purpose,
+                usage,
+                "© 2024 Gravitate Health",
+                [Parameter.defaultValues()],
+                [new Content('application/javascript', lens)]
+            )
+        }
 }
