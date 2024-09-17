@@ -1,5 +1,5 @@
 export async function uploadLenses(data: string, domain: string): Promise<Response> {
-    const baseUrl = `${domain}/ips/api/fhir/Library`;
+    const baseUrl = `${domain}/fhir/Library`;
 
     const dataJson = JSON.parse(data);
 
