@@ -10,6 +10,8 @@ import { Type } from "./type.js"; // Add this import statement
 export class LensFhirResource {
     resourceType: string;
 
+    id: string;
+
     meta: Meta;
 
     extension: Extension[];
@@ -53,6 +55,7 @@ export class LensFhirResource {
     // eslint-disable-next-line max-params
     private constructor(resourceType: string, meta: Meta, extension: Extension[], url: string, identifier: Identifier[], version: string, name: string, title: string, status: string, experimental: boolean, type: Type, publisher: string, contact: Contact[], description: string, jurisdiction: Jurisdiction[], purpose: string, usage: string, copyright: string, parameter: Parameter[], content: Content[]) {
         this.resourceType = resourceType;
+        this.id = name.toLowerCase().replace(/\s+/g, '-');
         this.date = new Date().toISOString();
         this.meta = meta;
         this.extension = extension;
