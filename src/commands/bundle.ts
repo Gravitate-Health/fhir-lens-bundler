@@ -23,6 +23,7 @@ export default class Bundle extends Command {
     // flag with no value (-f, --force)
     default: Flags.boolean  ({ char: 'd', description: 'use default values for the bundle', required: false}),
     name: Flags.string({ char: 'n', description: 'name to apply to lens', required: true }),
+    update: Flags.boolean({ char: 'u', description: 'update existing bundle file (content and date only)', required: false }),
   }
 
   public async run(): Promise<void> {
@@ -30,7 +31,8 @@ export default class Bundle extends Command {
 
     spinner.start('Starting process...');
 
-    if (flags.default) this.bundleLensesDefaultInformaton(args.file, flags.name);
+    if (flags.update) this.updateExistingBundle(args.file, flags.name);
+    else if (flags.default) this.bundleLensesDefaultInformaton(args.file, flags.name);
     else this.bundleLensesInteractive(args.file, flags.name);
   }
 
@@ -46,7 +48,7 @@ export default class Bundle extends Command {
     const bundle = LensFhirResource.defaultValues(name, base64FileData);
     stopAndPersistSpinner('Bundle created', spinner);
     changeSpinnerText('Writing bundle to file...', spinner)
-    writeBundleToFile(bundle);
+    writeBundleToFile(bundle, base64FileData);
     stopAndPersistSpinner(`Bundle written to file: ${bundle.name}.json`, spinner);
     spinner.stopAndPersist({
       symbol: '⭐',
@@ -90,13 +92,55 @@ export default class Bundle extends Command {
       const bundle = LensFhirResource.interactiveValues(answers.name, answers.description, answers.purpose, answers.usage, base64FileData);
       stopAndPersistSpinner('Bundle created', spinner);
       changeSpinnerText('Writing bundle to file...', spinner)
-      writeBundleToFile(bundle);
+      writeBundleToFile(bundle, base64FileData);
       stopAndPersistSpinner(`Bundle written to file: ${bundle.name}.json`, spinner);
       spinner.stopAndPersist({
         symbol: '⭐',
         text: 'Process complete',
       });
     });
+  }
+
+  private updateExistingBundle(file: string, name: string): void {
+    const bundleFileName = `${name}.json`;
+    const fs = require('node:fs');
+    
+    if (!fs.existsSync(bundleFileName)) {
+      spinner.fail(`Bundle file ${bundleFileName} does not exist. Use without -u flag to create a new bundle.`);
+      return;
+    }
+
+    changeSpinnerText('Updating existing bundle', spinner);
+    changeSpinnerText('Retrieving file data...', spinner);
+    const fileData = getFileData(file);
+    stopAndPersistSpinner('File data retrieved', spinner);
+    changeSpinnerText('Converting file data to base64...', spinner);
+    const base64FileData = this.stringTobase64(fileData);
+    stopAndPersistSpinner('File data converted to base64', spinner);
+    changeSpinnerText(`Updating bundle: ${name}`, spinner);
+    
+    try {
+      const existingBundleJson = fs.readFileSync(bundleFileName, 'utf8');
+      const existingBundle = JSON.parse(existingBundleJson);
+      
+      // Update only the content and date
+      existingBundle.date = new Date().toISOString();
+      if (existingBundle.content && existingBundle.content.length > 0) {
+        existingBundle.content[0].data = base64FileData;
+      }
+      
+      const updatedBundleJson = JSON.stringify(existingBundle, null, 2);
+      fs.writeFileSync(bundleFileName, updatedBundleJson);
+      
+      stopAndPersistSpinner('Bundle updated', spinner);
+      spinner.stopAndPersist({
+        symbol: '⭐',
+        text: `Bundle ${bundleFileName} updated successfully (content and date)`,
+      });
+    } catch (error) {
+      spinner.fail(`Error updating bundle: ${error}`);
+      throw error;
+    }
   }
 
   private stringTobase64(str: string): string {
