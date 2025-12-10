@@ -20,7 +20,7 @@ export default class Upload extends Command {
 
   static override flags = {
     // flag with a value (-n, --name=VALUE)
-    domain: Flags.string({char: 'd', description: 'domain where FHIR server is hoste (with http/https)', required: true}),
+    domain: Flags.string({char: 'd', description: 'domain where FHIR server is hosted (with http/https)', required: true}),
   }
 
   public async run(): Promise<void> {
