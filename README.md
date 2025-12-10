@@ -24,6 +24,8 @@ USAGE
 # Commands
 <!-- commands -->
 * [`fhir-lens-bundler bundle FILE`](#fhir-lens-bundler-bundle-file)
+* [`fhir-lens-bundler lslens [DIRECTORY]`](#fhir-lens-bundler-lslens-directory)
+* [`fhir-lens-bundler new NAME`](#fhir-lens-bundler-new-name)
 * [`fhir-lens-bundler upload FILE`](#fhir-lens-bundler-upload-file)
 
 ## `fhir-lens-bundler bundle FILE`
@@ -32,23 +34,103 @@ Bundles raw lenses into a FHIR compliant single file.
 
 ```
 USAGE
-  $ fhir-lens-bundler bundle FILE -n <value> [-d]
+  $ fhir-lens-bundler bundle FILE -n <value> [-d] [-u]
 
 ARGUMENTS
   FILE  file to read
 
 FLAGS
-  -d, --default       bundle lenses with default information
+  -d, --default       use default values for the bundle
   -n, --name=<value>  (required) name to apply to lens
+  -u, --update        update existing bundle file (content and date only)
 
 DESCRIPTION
   Bundles raw lenses into a FHIR compliant single file.
+  
+  By default, the command runs in interactive mode, prompting for bundle metadata.
+  Use -d flag to skip prompts and use default values.
+  Use -u flag to update an existing bundle file with new content and updated date.
 
 EXAMPLES
-  $ fhir-lens-bundler bundle
+  $ fhir-lens-bundler bundle mylens.js -n MyLens
+  $ fhir-lens-bundler bundle mylens.js -n MyLens -d
+  $ fhir-lens-bundler bundle mylens.js -n MyLens -u
 ```
 
 _See code: [src/commands/bundle.ts](https://github.com/Gravitate-Health/fhir-lens-bundler/blob/v0.1.2/src/commands/bundle.ts)_
+
+## `fhir-lens-bundler lslens [DIRECTORY]`
+
+List valid FHIR lenses in a directory (similar to ls).
+
+```
+USAGE
+  $ fhir-lens-bundler lslens [DIRECTORY] [-a] [-v] [-j]
+
+ARGUMENTS
+  DIRECTORY  [default: .] directory to search for lenses
+
+FLAGS
+  -a, --all       include lenses that may be missing content (base64 data)
+  -j, --json      output as JSON format
+  -v, --validate  include full validation report for each lens
+
+DESCRIPTION
+  List valid FHIR lenses in a directory (similar to ls).
+  
+  By default, only lists fully-fledged lenses with complete base64 content.
+  Use -a to include lenses that may be missing content.
+  Use -v to show detailed validation reports.
+  Use -j for JSON output (useful for scripting).
+  
+  Default output shows just file paths, making it ideal for piping to xargs.
+
+EXAMPLES
+  $ fhir-lens-bundler lslens
+  $ fhir-lens-bundler lslens ./lenses
+  $ fhir-lens-bundler lslens -a
+  $ fhir-lens-bundler lslens -v
+  $ fhir-lens-bundler lslens ./lenses | xargs -I {} echo "Processing: {}"
+```
+
+_See code: [src/commands/lslens.ts](https://github.com/Gravitate-Health/fhir-lens-bundler/blob/v0.1.2/src/commands/lslens.ts)_
+
+## `fhir-lens-bundler new NAME`
+
+Creates a new lens with JavaScript file and FHIR bundle.
+
+```
+USAGE
+  $ fhir-lens-bundler new NAME [-d] [-f]
+
+ARGUMENTS
+  NAME  name of the lens to create
+
+FLAGS
+  -d, --default  use default values for the bundle
+  -f, --force    overwrite existing files if they exist
+
+DESCRIPTION
+  Creates a new lens with JavaScript file and FHIR bundle.
+  
+  Creates two files:
+  - <name>.js: JavaScript file with lens template from GitHub repository
+  - <name>.json: FHIR-compliant bundle with the JS code encoded in base64
+  
+  By default, the command runs in interactive mode, prompting for bundle metadata.
+  Use -d flag to skip prompts and use default values.
+  Use -f flag to overwrite existing files.
+  
+  The JavaScript template is fetched from the Gravitate Health lens template 
+  repository at runtime, ensuring you always get the latest version.
+
+EXAMPLES
+  $ fhir-lens-bundler new MyLens
+  $ fhir-lens-bundler new MyLens -d
+  $ fhir-lens-bundler new MyLens -d -f
+```
+
+_See code: [src/commands/new.ts](https://github.com/Gravitate-Health/fhir-lens-bundler/blob/v0.1.2/src/commands/new.ts)_
 
 
 ## `fhir-lens-bundler upload FILE`
