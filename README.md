@@ -23,6 +23,7 @@ USAGE
 <!-- usagestop -->
 # Commands
 <!-- commands -->
+* [`fhir-lens-bundler batch-bundle [DIRECTORY]`](#fhir-lens-bundler-batch-bundle-directory)
 * [`fhir-lens-bundler bundle FILE`](#fhir-lens-bundler-bundle-file)
 * [`fhir-lens-bundler lsenhancejs [DIRECTORY]`](#fhir-lens-bundler-lsenhancejs-directory)
 * [`fhir-lens-bundler lslens [DIRECTORY]`](#fhir-lens-bundler-lslens-directory)
@@ -59,6 +60,51 @@ EXAMPLES
 ```
 
 _See code: [src/commands/bundle.ts](https://github.com/Gravitate-Health/fhir-lens-bundler/blob/v0.1.2/src/commands/bundle.ts)_
+
+## `fhir-lens-bundler batch-bundle [DIRECTORY]`
+
+Batch process and bundle multiple lenses in a directory.
+
+```
+USAGE
+  $ fhir-lens-bundler batch-bundle [DIRECTORY] [-s] [-d] [-e <value>] [-f]
+
+ARGUMENTS
+  DIRECTORY  [default: .] directory containing lenses to bundle
+
+FLAGS
+  -d, --skip-date   do not update the date field when bundling
+  -e, --exclude=<value>  regex pattern to exclude files (applied to filename)
+  -f, --force       force bundle all lenses even if content is up to date
+  -s, --skip-valid  skip lenses that already have valid base64 content
+
+DESCRIPTION
+  Batch process and bundle multiple lenses in a directory.
+  
+  Automatically discovers lenses (valid or missing content) and their corresponding
+  JavaScript files, then bundles them together. For each lens:
+  - If it's missing content, adds the JS code as base64
+  - If it has content, checks if it needs updating against the JS file
+  - Updates the date field (unless --skip-date is used)
+  
+  The command uses exact matching (same filename) or fallback matching (any JS 
+  file in the same directory with an enhance function) to find the appropriate
+  JavaScript code for each lens.
+  
+  The --force flag bypasses the content check and bundles all lenses regardless 
+  of whether their content is already up to date. This overrides --skip-valid.
+
+EXAMPLES
+  $ fhir-lens-bundler batch-bundle
+  $ fhir-lens-bundler batch-bundle ./lenses
+  $ fhir-lens-bundler batch-bundle ./lenses --skip-valid
+  $ fhir-lens-bundler batch-bundle ./lenses --force
+  $ fhir-lens-bundler batch-bundle ./lenses --skip-date
+  $ fhir-lens-bundler batch-bundle ./lenses --exclude "test.*"
+  $ fhir-lens-bundler batch-bundle ./lenses -s -d -e "draft.*"
+```
+
+_See code: [src/commands/batch-bundle.ts](https://github.com/Gravitate-Health/fhir-lens-bundler/blob/v0.1.2/src/commands/batch-bundle.ts)_
 
 ## `fhir-lens-bundler lsenhancejs [DIRECTORY]`
 
