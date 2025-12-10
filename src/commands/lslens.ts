@@ -1,13 +1,16 @@
 import { Args, Command, Flags } from '@oclif/core'
 import * as path from 'node:path'
-import * as dirController from '../controllers/dir-controller.js';
+
+import type { LensEntry } from '../controllers/dir-controller.js';
+
+import * as dirController from '../controllers/dir-controller.js'
 
 export default class Lslens extends Command {
   static args = {
     directory: Args.string({ 
-      description: 'directory to search for lenses', 
-      required: false,
-      default: '.'
+      default: '.', 
+      description: 'directory to search for lenses',
+      required: false
     }),
   }
 
@@ -27,14 +30,14 @@ export default class Lslens extends Command {
       description: 'include lenses that may be missing content (base64 data)', 
       required: false 
     }),
-    validate: Flags.boolean({ 
-      char: 'v', 
-      description: 'include full validation report for each lens', 
-      required: false 
-    }),
     json: Flags.boolean({ 
       char: 'j', 
       description: 'output as JSON format', 
+      required: false 
+    }),
+    validate: Flags.boolean({ 
+      char: 'v', 
+      description: 'include full validation report for each lens', 
       required: false 
     }),
   }
@@ -51,6 +54,7 @@ export default class Lslens extends Command {
         if (!flags.json) {
           this.log('No valid lenses found.');
         }
+
         return;
       }
 
@@ -59,7 +63,7 @@ export default class Lslens extends Command {
       
       if (!flags.all) {
         // Only include fully-fledged lenses (those with base64 content)
-        filteredLenses = lenses.filter((lens: any) => lens.hasBase64);
+        filteredLenses = lenses.filter((lens) => lens.hasBase64);
       }
 
       if (flags.json) {
@@ -72,19 +76,20 @@ export default class Lslens extends Command {
         // Simple output - just file paths (useful for xargs)
         this.outputSimple(filteredLenses);
       }
-    } catch (error: any) {
-      this.error(`Error listing lenses: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.error(`Error listing lenses: ${message}`);
     }
   }
 
-  private outputSimple(lenses: any[]): void {
+  private outputSimple(lenses: LensEntry[]): void {
     // Output just the file paths, one per line (ideal for xargs)
     for (const lens of lenses) {
       this.log(lens.path);
     }
   }
 
-  private outputWithValidation(lenses: any[]): void {
+  private outputWithValidation(lenses: LensEntry[]): void {
     for (const lens of lenses) {
       this.log(`\n${'='.repeat(60)}`);
       this.log(`File: ${lens.path}`);
@@ -119,15 +124,15 @@ export default class Lslens extends Command {
     this.log(`Total lenses found: ${lenses.length}`);
   }
 
-  private outputJson(lenses: any[], includeValidation: boolean): void {
-    const output = lenses.map((lens: any) => {
-      const result: any = {
-        path: lens.path,
+  private outputJson(lenses: LensEntry[], includeValidation: boolean): void {
+    const output = lenses.map((lens) => {
+      const result: Record<string, unknown> = {
+        hasBase64: lens.hasBase64,
         name: lens.name,
+        path: lens.path,
+        status: lens.status,
         url: lens.url,
         version: lens.version,
-        status: lens.status,
-        hasBase64: lens.hasBase64,
       };
 
       if (lens.enhancedWithJs) {
@@ -138,8 +143,8 @@ export default class Lslens extends Command {
       if (includeValidation) {
         const validation = dirController.validateFHIRLens(lens.lens);
         result.validation = {
-          isValid: validation.isValid,
           errors: validation.errors,
+          isValid: validation.isValid,
         };
       }
 

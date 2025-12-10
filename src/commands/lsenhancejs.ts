@@ -1,13 +1,16 @@
 import { Args, Command, Flags } from '@oclif/core'
 import * as path from 'node:path'
-import * as dirController from '../controllers/dir-controller.js';
+
+import type { EnhanceFiles } from '../controllers/dir-controller.js';
+
+import * as dirController from '../controllers/dir-controller.js'
 
 export default class Lsenhancejs extends Command {
   static args = {
     directory: Args.string({ 
-      description: 'directory to search for enhance JS files', 
-      required: false,
-      default: '.'
+      default: '.', 
+      description: 'directory to search for enhance JS files',
+      required: false
     }),
   }
 
@@ -46,24 +49,25 @@ export default class Lsenhancejs extends Command {
       const exactMatches = new Set<string>();
       
       // Add exact match files
-      for (const [jsonPath, jsPath] of Object.entries(enhanceFiles.exact)) {
+      for (const jsPath of Object.values(enhanceFiles.exact)) {
         allJsFiles.add(jsPath as string);
         exactMatches.add(jsPath as string);
       }
       
       // Add fallback files
-      for (const [dir, jsFiles] of Object.entries(enhanceFiles.fallback)) {
+      for (const jsFiles of Object.values(enhanceFiles.fallback)) {
         for (const jsFile of jsFiles as string[]) {
           allJsFiles.add(jsFile);
         }
       }
 
-      const sortedFiles = Array.from(allJsFiles).sort();
+      const sortedFiles = [...allJsFiles].sort();
 
       if (sortedFiles.length === 0) {
         if (!flags.json) {
           this.log('No valid enhance JavaScript files found.');
         }
+
         return;
       }
 
@@ -77,8 +81,9 @@ export default class Lsenhancejs extends Command {
         // Simple output - just file paths (useful for xargs)
         this.outputSimple(sortedFiles);
       }
-    } catch (error: any) {
-      this.error(`Error listing enhance JS files: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.error(`Error listing enhance JS files: ${message}`);
     }
   }
 
@@ -89,7 +94,7 @@ export default class Lsenhancejs extends Command {
     }
   }
 
-  private outputWithDetails(files: string[], exactMatches: Set<string>, enhanceFiles: any): void {
+  private outputWithDetails(files: string[], exactMatches: Set<string>, enhanceFiles: EnhanceFiles): void {
     for (const file of files) {
       this.log(`\n${'='.repeat(60)}`);
       this.log(`File: ${file}`);
@@ -123,9 +128,9 @@ export default class Lsenhancejs extends Command {
     this.log(`Total enhance JS files found: ${files.length}`);
   }
 
-  private outputJson(files: string[], exactMatches: Set<string>, enhanceFiles: any, includeDetails: boolean): void {
+  private outputJson(files: string[], exactMatches: Set<string>, enhanceFiles: EnhanceFiles, includeDetails: boolean): void {
     const output = files.map((file: string) => {
-      const result: any = {
+      const result: Record<string, unknown> = {
         path: file,
       };
 
@@ -140,6 +145,7 @@ export default class Lsenhancejs extends Command {
               matchingJsons.push(jsonPath as string);
             }
           }
+
           result.matchingJsonFiles = matchingJsons;
         } else {
           result.directory = path.dirname(file);

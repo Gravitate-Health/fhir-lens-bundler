@@ -10,23 +10,23 @@ import { uploadLenses } from '../controllers/upload-controller.js'
 const spinner = ora();
 
 interface BatchUploadResult {
+  details: Array<{
+    action: 'error' | 'skipped' | 'uploaded';
+    file: string;
+    reason: string;
+  }>;
+  errors: number;
   processed: number;
   skipped: number;
   uploaded: number;
-  errors: number;
-  details: Array<{
-    file: string;
-    action: 'uploaded' | 'skipped' | 'error';
-    reason: string;
-  }>;
 }
 
 export default class BatchUpload extends Command {
   static args = {
     directory: Args.string({ 
-      description: 'directory containing lenses to upload', 
-      required: false,
-      default: '.'
+      default: '.', 
+      description: 'directory containing lenses to upload',
+      required: false
     }),
   }
 
@@ -45,16 +45,6 @@ export default class BatchUpload extends Command {
       description: 'domain where FHIR server is hosted (with http/https)', 
       required: true
     }),
-    'skip-valid': Flags.boolean({ 
-      char: 's', 
-      description: 'skip lenses that already have valid base64 content', 
-      required: false 
-    }),
-    'skip-date': Flags.boolean({ 
-      char: 't', 
-      description: 'do not update the date field when bundling', 
-      required: false 
-    }),
     exclude: Flags.string({ 
       char: 'e', 
       description: 'regex pattern to exclude files (applied to filename)', 
@@ -63,6 +53,16 @@ export default class BatchUpload extends Command {
     force: Flags.boolean({ 
       char: 'f', 
       description: 'force bundle all lenses even if content is up to date', 
+      required: false 
+    }),
+    'skip-date': Flags.boolean({ 
+      char: 't', 
+      description: 'do not update the date field when bundling', 
+      required: false 
+    }),
+    'skip-valid': Flags.boolean({ 
+      char: 's', 
+      description: 'skip lenses that already have valid base64 content', 
       required: false 
     }),
   }
@@ -75,7 +75,7 @@ export default class BatchUpload extends Command {
     const skipDate = flags['skip-date'] || false;
     const excludePattern = flags.exclude ? new RegExp(flags.exclude) : null;
     const force = flags.force || false;
-    const domain = flags.domain;
+    const {domain} = flags;
 
     spinner.start('Starting batch upload process...');
 
@@ -98,11 +98,11 @@ export default class BatchUpload extends Command {
       }
 
       const result: BatchUploadResult = {
+        details: [],
+        errors: 0,
         processed: 0,
         skipped: 0,
-        uploaded: 0,
-        errors: 0,
-        details: []
+        uploaded: 0
       };
 
       // Build exclude regex if provided
@@ -110,8 +110,9 @@ export default class BatchUpload extends Command {
       if (excludePattern) {
         try {
           excludeRegex = new RegExp(excludePattern.source);
-        } catch (error: any) {
-          spinner.fail(`Invalid exclude regex: ${error.message}`);
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error);
+          spinner.fail(`Invalid exclude regex: ${message}`);
           return;
         }
       }
@@ -124,26 +125,24 @@ export default class BatchUpload extends Command {
         if (excludeRegex && excludeRegex.test(fileName)) {
           result.skipped++;
           result.details.push({
-            file: lens.path,
             action: 'skipped',
+            file: lens.path,
             reason: 'Matched exclude pattern'
           });
           continue;
         }
 
         // Check if lens already has valid content and skip-valid flag is set (unless force is true)
-        if (!force && skipValid && lens.hasBase64) {
-          // Check if it was enhanced or already had content
-          if (!lens.enhancedWithJs) {
+        if (!force && skipValid && lens.hasBase64 && // Check if it was enhanced or already had content
+          !lens.enhancedWithJs) {
             result.skipped++;
             result.details.push({
-              file: lens.path,
               action: 'skipped',
+              file: lens.path,
               reason: 'Already has valid base64 content'
             });
             continue;
           }
-        }
 
         try {
           // Determine which JS file to use
@@ -162,8 +161,8 @@ export default class BatchUpload extends Command {
           if (!jsFile) {
             result.skipped++;
             result.details.push({
-              file: lens.path,
               action: 'skipped',
+              file: lens.path,
               reason: 'No corresponding JS file found'
             });
             continue;
@@ -174,28 +173,29 @@ export default class BatchUpload extends Command {
           const base64Content = Buffer.from(jsContent, 'binary').toString('base64');
 
           // Check if content needs update
-          const currentContent = lens.lens.content?.[0]?.data;
+          const content = lens.lens.content as Array<Record<string, unknown>> | undefined;
+          const currentContent = content?.[0]?.data;
           const needsUpdate = currentContent !== base64Content;
 
           if (!needsUpdate && skipValid && !force) {
             result.skipped++;
             result.details.push({
-              file: lens.path,
               action: 'skipped',
+              file: lens.path,
               reason: 'Content already up to date'
             });
             continue;
           }
 
           // Update the lens in memory (don't write to file)
-          lens.lens.content = lens.lens.content || [];
-          if (lens.lens.content.length === 0) {
-            lens.lens.content.push({});
+          const lensContent = (lens.lens.content || []) as Array<Record<string, unknown>>;
+          if (lensContent.length === 0) {
+            lensContent.push({});
           }
-          lens.lens.content[0].contentType = 'application/javascript';
-          lens.lens.content[0].data = base64Content;
-
-          // Update date unless skip-date flag is set
+          
+          lensContent[0].contentType = 'application/javascript';
+          lensContent[0].data = base64Content;
+          lens.lens.content = lensContent;          // Update date unless skip-date flag is set
           if (!skipDate) {
             lens.lens.date = new Date().toISOString();
           }
@@ -203,38 +203,41 @@ export default class BatchUpload extends Command {
           // Upload the lens
           changeSpinnerText(`Uploading ${fileName}...`, spinner);
           const lensJson = JSON.stringify(lens.lens, null, 2);
+          // eslint-disable-next-line no-await-in-loop
           const response = await uploadLenses(lensJson, domain);
 
           if (response.ok) {
             result.uploaded++;
             result.processed++;
             result.details.push({
-              file: lens.path,
               action: 'uploaded',
+              file: lens.path,
               reason: `Uploaded with ${enhanceSource} JS: ${jsFile}`
             });
             this.log(`✓ Uploaded: ${fileName}`);
           } else {
+            // eslint-disable-next-line no-await-in-loop
             const errorText = await response.text();
             result.errors++;
             result.processed++;
             result.details.push({
-              file: lens.path,
               action: 'error',
+              file: lens.path,
               reason: `HTTP ${response.status}: ${errorText}`
             });
             this.log(`✗ Error uploading ${fileName}: HTTP ${response.status}`);
           }
 
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error);
           result.errors++;
           result.processed++;
           result.details.push({
-            file: lens.path,
             action: 'error',
-            reason: error.message
+            file: lens.path,
+            reason: message
           });
-          this.log(`✗ Error: ${fileName} - ${error.message}`);
+          this.log(`✗ Error: ${fileName} - ${message}`);
         }
       }
 
@@ -252,9 +255,10 @@ export default class BatchUpload extends Command {
       this.log(`  Errors: ${result.errors}`);
       this.log('='.repeat(60));
 
-    } catch (error: any) {
-      spinner.fail(`Error during batch upload: ${error.message}`);
-      this.error(error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      spinner.fail(`Error during batch upload: ${message}`);
+      this.error(message);
     }
   }
 }

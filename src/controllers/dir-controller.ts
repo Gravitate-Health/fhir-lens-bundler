@@ -1,36 +1,38 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-interface ValidationResult {
-  isValid: boolean;
+export interface ValidationResult {
   errors: string[];
+  isValid: boolean;
 }
 
-interface EnhanceFiles {
+export interface EnhanceFiles {
   exact: Record<string, string>;
   fallback: Record<string, string[]>;
 }
 
-interface LensEntry {
+export interface LensEntry {
+  enhanceSource?: string;
+  enhancedWithJs?: string;
+  hasBase64: boolean;
+  lens: Record<string, unknown>;
   name: string;
+  path: string;
+  status: string;
   url: string;
   version: string;
-  status: string;
-  path: string;
-  hasBase64: boolean;
-  lens: any;
-  enhancedWithJs?: string;
-  enhanceSource?: string;
 }
 
 /**
  * Validates if a JSON object conforms to FHIR Lens profile
+ * @param lens - The lens object to validate
+ * @returns ValidationResult with isValid flag and error messages
  */
-export function validateFHIRLens(lens: any): ValidationResult {
+export function validateFHIRLens(lens: Record<string, unknown>): ValidationResult {
   const errors: string[] = [];
 
   if (!lens || typeof lens !== 'object') {
-    return { isValid: false, errors: ['Lens must be a JSON object'] };
+    return { errors: ['Lens must be a JSON object'], isValid: false };
   }
 
   if (lens.resourceType !== 'Library') {
@@ -49,9 +51,7 @@ export function validateFHIRLens(lens: any): ValidationResult {
     errors.push('status is required and must be a string');
   }
 
-  if (!Array.isArray(lens.content)) {
-    errors.push('content must be an array');
-  } else {
+  if (Array.isArray(lens.content)) {
     let hasBase64Content = false;
     for (const item of lens.content) {
       if (item.data && typeof item.data === 'string') {
@@ -59,19 +59,24 @@ export function validateFHIRLens(lens: any): ValidationResult {
         break;
       }
     }
+
     if (!hasBase64Content) {
       errors.push('content must include at least one item with base64 encoded data');
     }
+  } else {
+    errors.push('content must be an array');
   }
 
   return {
-    isValid: errors.length === 0,
-    errors
+    errors,
+    isValid: errors.length === 0
   };
 }
 
 /**
  * Recursively find all JSON files in a directory
+ * @param dir - The directory to search
+ * @returns Array of JSON file paths
  */
 export function findJsonFiles(dir: string): string[] {
   const jsonFiles: string[] = [];
@@ -97,6 +102,8 @@ export function findJsonFiles(dir: string): string[] {
 
 /**
  * Find JavaScript files with an enhance function
+ * @param dir - The directory to search
+ * @returns EnhanceFiles object with exact and fallback matches
  */
 export function findEnhanceFiles(dir: string): EnhanceFiles {
   const enhanceFiles: EnhanceFiles = {
@@ -139,7 +146,7 @@ export function findEnhanceFiles(dir: string): EnhanceFiles {
             // Also track all JS files with enhance in this directory for fallback
             jsFilesInDir.push(filePath);
           }
-        } catch (e) {
+        } catch {
           // Skip files that can't be read
         }
       }
@@ -157,6 +164,8 @@ export function findEnhanceFiles(dir: string): EnhanceFiles {
 
 /**
  * Convert JavaScript file content to base64
+ * @param filePath - Path to the JavaScript file
+ * @returns Base64 encoded string
  */
 export function jsToBase64(filePath: string): string {
   const content = fs.readFileSync(filePath, 'utf8');
@@ -165,6 +174,7 @@ export function jsToBase64(filePath: string): string {
 
 /**
  * Get default enhance function as base64
+ * @returns Base64 encoded default enhance function
  */
 function getDefaultEnhanceBase64(): string {
   const defaultEnhance = `function enhance(originalContent) {
@@ -174,7 +184,7 @@ function getDefaultEnhanceBase64(): string {
   return Buffer.from(defaultEnhance).toString('base64');
 }
 
-function isLensMissingBase64Content(jsonData: any): boolean {
+function isLensMissingBase64Content(jsonData: Record<string, unknown>): boolean {
   // Determine if the lens is missing base64 content and needs enhancement.
   if (!jsonData.content || !Array.isArray(jsonData.content) || jsonData.content.length === 0) {
     return true;
@@ -185,16 +195,22 @@ function isLensMissingBase64Content(jsonData: any): boolean {
     if (!item || typeof item.data !== 'string' || item.data.length === 0) {
       return true;
     }
+
     return false;
   }
 
   // length > 1: check if any item has non-empty string data
-  const hasAnyData = jsonData.content.some((c: any) => c && typeof c.data === 'string' && c.data.length > 0);
+  const hasAnyData = jsonData.content.some((c: unknown) => {
+    const content = c as Record<string, unknown>;
+    return content && typeof content.data === 'string' && content.data.length > 0;
+  });
   return !hasAnyData;
 }
 
 /**
  * Discover and validate lenses from a folder
+ * @param lensFilePath - Path to lens file or directory
+ * @returns Promise resolving to array of LensEntry objects
  */
 export async function discoverLenses(lensFilePath: string): Promise<LensEntry[]> {
   try {
@@ -214,13 +230,13 @@ export async function discoverLenses(lensFilePath: string): Promise<LensEntry[]>
           console.log(`Valid lens found: ${jsonData.name} in file ${filePath}`);
           // Lens is valid
           validLenses.push({
-            name: jsonData.name,
-            url: jsonData.url,
-            version: jsonData.version || 'unknown',
-            status: jsonData.status,
-            path: filePath,
             hasBase64: true,
-            lens: jsonData
+            lens: jsonData,
+            name: jsonData.name,
+            path: filePath,
+            status: jsonData.status,
+            url: jsonData.url,
+            version: jsonData.version || 'unknown'
           });
         } else if ((validation.errors.length===1 && validation.errors[0].includes("content")) && isLensMissingBase64Content(jsonData)) {
 
@@ -247,8 +263,9 @@ export async function discoverLenses(lensFilePath: string): Promise<LensEntry[]>
             console.log(`Enhancing lens ${jsonData.name} with JS file ${enhanceFile} (${enhanceSource})`);
             try {
               base64Content = jsToBase64(enhanceFile);
-            } catch (jsError: any) {
-              console.debug(`Failed to enhance lens with JS: ${jsError.message}, using default enhance`);
+            } catch (jsError: unknown) {
+              const message = jsError instanceof Error ? jsError.message : String(jsError);
+              console.debug(`Failed to enhance lens with JS: ${message}, using default enhance`);
               base64Content = getDefaultEnhanceBase64();
               enhanceFile = '';
               enhanceSource = 'default';
@@ -264,43 +281,48 @@ export async function discoverLenses(lensFilePath: string): Promise<LensEntry[]>
             if (jsonData.content.length === 0) {
               jsonData.content.push({});
             }
+
             jsonData.content[0].data = base64Content;
 
             const revalidation = validateFHIRLens(jsonData);
             if (revalidation.isValid) {
               const lensEntry: LensEntry = {
-                name: jsonData.name,
-                url: jsonData.url,
-                version: jsonData.version || 'unknown',
-                status: jsonData.status,
-                path: filePath,
                 hasBase64: true,
-                lens: jsonData
+                lens: jsonData,
+                name: jsonData.name,
+                path: filePath,
+                status: jsonData.status,
+                url: jsonData.url,
+                version: jsonData.version || 'unknown'
               };
               
               if (enhanceFile) {
                 lensEntry.enhancedWithJs = enhanceFile;
               }
+
               if (enhanceSource) {
                 lensEntry.enhanceSource = enhanceSource;
               }
               
               validLenses.push(lensEntry);
             }
-          } catch (enhanceError: any) {
-            console.debug(`Failed to enhance lens ${jsonData.name}: ${enhanceError.message}`);
+          } catch (enhanceError: unknown) {
+            const message = enhanceError instanceof Error ? enhanceError.message : String(enhanceError);
+            console.debug(`Failed to enhance lens ${jsonData.name}: ${message}`);
           }
         } else {
           console.debug(`Invalid lens in file ${filePath}: ${validation.errors.join('; ')}`);
         }
-      } catch (error: any) {
-        console.debug(`Error processing file ${filePath}: ${error.message}`);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.debug(`Error processing file ${filePath}: ${message}`);
       }
     }
 
     return validLenses;
-  } catch (error: any) {
-    console.error(`Error discovering lenses:`, error.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Error discovering lenses:`, message);
     throw error;
   }
 }

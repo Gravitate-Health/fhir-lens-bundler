@@ -9,23 +9,23 @@ import { changeSpinnerText, stopAndPersistSpinner } from '../controllers/spinner
 const spinner = ora();
 
 interface BatchResult {
+  details: Array<{
+    action: 'error' | 'skipped' | 'updated';
+    file: string;
+    reason: string;
+  }>;
+  errors: number;
   processed: number;
   skipped: number;
   updated: number;
-  errors: number;
-  details: Array<{
-    file: string;
-    action: 'updated' | 'skipped' | 'error';
-    reason: string;
-  }>;
 }
 
 export default class BatchBundle extends Command {
   static args = {
     directory: Args.string({ 
-      description: 'directory containing lenses to bundle', 
-      required: false,
-      default: '.'
+      default: '.', 
+      description: 'directory containing lenses to bundle',
+      required: false
     }),
   }
 
@@ -40,16 +40,6 @@ export default class BatchBundle extends Command {
   ]
 
   static flags = {
-    'skip-valid': Flags.boolean({ 
-      char: 's', 
-      description: 'skip lenses that already have valid base64 content', 
-      required: false 
-    }),
-    'skip-date': Flags.boolean({ 
-      char: 'd', 
-      description: 'do not update the date field when bundling', 
-      required: false 
-    }),
     exclude: Flags.string({ 
       char: 'e', 
       description: 'regex pattern to exclude files (applied to filename)', 
@@ -58,6 +48,16 @@ export default class BatchBundle extends Command {
     force: Flags.boolean({ 
       char: 'f', 
       description: 'force bundle all lenses even if content is up to date', 
+      required: false 
+    }),
+    'skip-date': Flags.boolean({ 
+      char: 'd', 
+      description: 'do not update the date field when bundling', 
+      required: false 
+    }),
+    'skip-valid': Flags.boolean({ 
+      char: 's', 
+      description: 'skip lenses that already have valid base64 content', 
       required: false 
     }),
   }
@@ -92,11 +92,11 @@ export default class BatchBundle extends Command {
       }
 
       const result: BatchResult = {
+        details: [],
+        errors: 0,
         processed: 0,
         skipped: 0,
-        updated: 0,
-        errors: 0,
-        details: []
+        updated: 0
       };
 
       // Build exclude regex if provided
@@ -104,8 +104,9 @@ export default class BatchBundle extends Command {
       if (excludePattern) {
         try {
           excludeRegex = new RegExp(excludePattern.source);
-        } catch (error: any) {
-          spinner.fail(`Invalid exclude regex: ${error.message}`);
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error);
+          spinner.fail(`Invalid exclude regex: ${message}`);
           return;
         }
       }
@@ -118,26 +119,24 @@ export default class BatchBundle extends Command {
         if (excludeRegex && excludeRegex.test(fileName)) {
           result.skipped++;
           result.details.push({
-            file: lens.path,
             action: 'skipped',
+            file: lens.path,
             reason: 'Matched exclude pattern'
           });
           continue;
         }
 
         // Check if lens already has valid content and skip-valid flag is set (unless force is true)
-        if (!force && skipValid && lens.hasBase64) {
-          // Check if it was enhanced or already had content
-          if (!lens.enhancedWithJs) {
+        if (!force && skipValid && lens.hasBase64 && // Check if it was enhanced or already had content
+          !lens.enhancedWithJs) {
             result.skipped++;
             result.details.push({
-              file: lens.path,
               action: 'skipped',
+              file: lens.path,
               reason: 'Already has valid base64 content'
             });
             continue;
           }
-        }
 
         try {
           // Determine which JS file to use
@@ -156,8 +155,8 @@ export default class BatchBundle extends Command {
           if (!jsFile) {
             result.skipped++;
             result.details.push({
-              file: lens.path,
               action: 'skipped',
+              file: lens.path,
               reason: 'No corresponding JS file found'
             });
             continue;
@@ -168,26 +167,29 @@ export default class BatchBundle extends Command {
           const base64Content = Buffer.from(jsContent, 'binary').toString('base64');
 
           // Check if content needs update
-          const currentContent = lens.lens.content?.[0]?.data;
+          const content = lens.lens.content as Array<Record<string, unknown>> | undefined;
+          const currentContent = content?.[0]?.data;
           const needsUpdate = currentContent !== base64Content;
 
           if (!needsUpdate && flags['skip-valid']) {
             result.skipped++;
             result.details.push({
-              file: lens.path,
               action: 'skipped',
+              file: lens.path,
               reason: 'Content already up to date'
             });
             continue;
           }
 
           // Update the lens
-          lens.lens.content = lens.lens.content || [];
-          if (lens.lens.content.length === 0) {
-            lens.lens.content.push({});
+          const lensContent = (lens.lens.content || []) as Array<Record<string, unknown>>;
+          if (lensContent.length === 0) {
+            lensContent.push({});
           }
-          lens.lens.content[0].contentType = 'application/javascript';
-          lens.lens.content[0].data = base64Content;
+
+          lensContent[0].contentType = 'application/javascript';
+          lensContent[0].data = base64Content;
+          lens.lens.content = lensContent;
 
           // Update date unless skip-date flag is set
           if (!skipDate) {
@@ -201,21 +203,22 @@ export default class BatchBundle extends Command {
           result.updated++;
           result.processed++;
           result.details.push({
-            file: lens.path,
             action: 'updated',
+            file: lens.path,
             reason: `Bundled with ${enhanceSource} JS: ${jsFile}`
           });
 
           this.log(`✓ Updated: ${fileName}`);
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error);
           result.errors++;
           result.processed++;
           result.details.push({
-            file: lens.path,
             action: 'error',
-            reason: error.message
+            file: lens.path,
+            reason: message
           });
-          this.log(`✗ Error: ${fileName} - ${error.message}`);
+          this.log(`✗ Error: ${fileName} - ${message}`);
         }
       }
 
@@ -233,9 +236,10 @@ export default class BatchBundle extends Command {
       this.log(`  Errors: ${result.errors}`);
       this.log('='.repeat(60));
 
-    } catch (error: any) {
-      spinner.fail(`Error during batch bundle: ${error.message}`);
-      this.error(error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      spinner.fail(`Error during batch bundle: ${message}`);
+      this.error(message);
     }
   }
 }

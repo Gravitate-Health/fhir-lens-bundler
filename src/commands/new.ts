@@ -1,6 +1,6 @@
 import { Args, Command, Flags } from '@oclif/core'
-import * as fs from 'node:fs'
 import inquirer from 'inquirer';
+import * as fs from 'node:fs'
 import ora from 'ora'
 
 import { changeSpinnerText, stopAndPersistSpinner } from '../controllers/spinner-controller.js'
@@ -68,6 +68,7 @@ export default class New extends Command {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+
       return await response.text();
     } catch (error) {
       throw new Error(`Failed to fetch lens template: ${error}`);
