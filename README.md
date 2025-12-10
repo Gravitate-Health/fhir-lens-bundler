@@ -24,6 +24,7 @@ USAGE
 # Commands
 <!-- commands -->
 * [`fhir-lens-bundler bundle FILE`](#fhir-lens-bundler-bundle-file)
+* [`fhir-lens-bundler lsenhancejs [DIRECTORY]`](#fhir-lens-bundler-lsenhancejs-directory)
 * [`fhir-lens-bundler lslens [DIRECTORY]`](#fhir-lens-bundler-lslens-directory)
 * [`fhir-lens-bundler new NAME`](#fhir-lens-bundler-new-name)
 * [`fhir-lens-bundler upload FILE`](#fhir-lens-bundler-upload-file)
@@ -58,6 +59,40 @@ EXAMPLES
 ```
 
 _See code: [src/commands/bundle.ts](https://github.com/Gravitate-Health/fhir-lens-bundler/blob/v0.1.2/src/commands/bundle.ts)_
+
+## `fhir-lens-bundler lsenhancejs [DIRECTORY]`
+
+List valid enhance JavaScript files in a directory (similar to ls).
+
+```
+USAGE
+  $ fhir-lens-bundler lsenhancejs [DIRECTORY] [-d] [-j]
+
+ARGUMENTS
+  DIRECTORY  [default: .] directory to search for enhance JS files
+
+FLAGS
+  -d, --details  show details about matches (exact vs fallback)
+  -j, --json     output as JSON format
+
+DESCRIPTION
+  List valid enhance JavaScript files in a directory (similar to ls).
+  
+  Finds JavaScript files that contain an enhance function definition.
+  Files are categorized as:
+  - Exact match: JS file has the same name as a corresponding JSON lens file
+  - Fallback: JS file in same directory but no matching JSON file name
+  
+  Default output shows just file paths, making it ideal for piping to xargs.
+
+EXAMPLES
+  $ fhir-lens-bundler lsenhancejs
+  $ fhir-lens-bundler lsenhancejs ./lenses
+  $ fhir-lens-bundler lsenhancejs -d
+  $ fhir-lens-bundler lsenhancejs ./lenses | xargs -I {} echo "Processing: {}"
+```
+
+_See code: [src/commands/lsenhancejs.ts](https://github.com/Gravitate-Health/fhir-lens-bundler/blob/v0.1.2/src/commands/lsenhancejs.ts)_
 
 ## `fhir-lens-bundler lslens [DIRECTORY]`
 
