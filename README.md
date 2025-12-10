@@ -24,6 +24,7 @@ USAGE
 # Commands
 <!-- commands -->
 * [`fhir-lens-bundler batch-bundle [DIRECTORY]`](#fhir-lens-bundler-batch-bundle-directory)
+* [`fhir-lens-bundler batch-upload [DIRECTORY]`](#fhir-lens-bundler-batch-upload-directory)
 * [`fhir-lens-bundler bundle FILE`](#fhir-lens-bundler-bundle-file)
 * [`fhir-lens-bundler lsenhancejs [DIRECTORY]`](#fhir-lens-bundler-lsenhancejs-directory)
 * [`fhir-lens-bundler lslens [DIRECTORY]`](#fhir-lens-bundler-lslens-directory)
@@ -105,6 +106,92 @@ EXAMPLES
 ```
 
 _See code: [src/commands/batch-bundle.ts](https://github.com/Gravitate-Health/fhir-lens-bundler/blob/v0.1.2/src/commands/batch-bundle.ts)_
+
+## `fhir-lens-bundler batch-upload [DIRECTORY]`
+
+Batch process, bundle, and upload multiple lenses to a FHIR server.
+
+```
+USAGE
+  $ fhir-lens-bundler batch-upload [DIRECTORY] -d <value> [-s] [-t] [-e <value>] [-f]
+
+ARGUMENTS
+  DIRECTORY  [default: .] directory containing lenses to upload
+
+FLAGS
+  -d, --domain=<value>  (required) domain where FHIR server is hosted (with http/https)
+  -e, --exclude=<value>  regex pattern to exclude files (applied to filename)
+  -f, --force           force bundle all lenses even if content is up to date
+  -s, --skip-valid      skip lenses that already have valid base64 content
+  -t, --skip-date       do not update the date field when bundling
+
+DESCRIPTION
+  Batch process, bundle, and upload multiple lenses to a FHIR server.
+  
+  This command combines the functionality of batch-bundle and upload. It discovers
+  all lens JSON files in the specified directory, bundles them with their corresponding
+  JavaScript files, and uploads them to a FHIR server. For each lens:
+  - Finds the corresponding JS file (exact or fallback match)
+  - Updates the content with base64-encoded JavaScript
+  - Updates the date field (unless --skip-date is used)
+  - Uploads to the FHIR server via POST (new) or PATCH (existing)
+  
+  The command uses the same matching logic as batch-bundle and the same upload
+  logic as the upload command.
+
+EXAMPLES
+  $ fhir-lens-bundler batch-upload -d https://fosps.gravitatehealth.eu/epi/api/fhir
+  $ fhir-lens-bundler batch-upload ./lenses -d https://fosps.gravitatehealth.eu/epi/api/fhir
+  $ fhir-lens-bundler batch-upload ./lenses -d https://fosps.gravitatehealth.eu/epi/api/fhir --skip-valid
+  $ fhir-lens-bundler batch-upload ./lenses -d https://fosps.gravitatehealth.eu/epi/api/fhir --force
+  $ fhir-lens-bundler batch-upload ./lenses -d https://fosps.gravitatehealth.eu/epi/api/fhir --exclude "test.*"
+  $ fhir-lens-bundler batch-upload ./lenses -d https://fosps.gravitatehealth.eu/epi/api/fhir -s -t -e "draft.*"
+```
+
+_See code: [src/commands/batch-upload.ts](https://github.com/Gravitate-Health/fhir-lens-bundler/blob/v0.1.2/src/commands/batch-upload.ts)_
+
+## `fhir-lens-bundler bundle FILE`
+
+Bundles raw JavaScript with metadata into a FHIR-compliant JSON file.
+
+```
+USAGE
+  $ fhir-lens-bundler batch-upload [DIRECTORY] -d <value> [-s] [-t] [-e <value>] [-f]
+
+ARGUMENTS
+  DIRECTORY  [default: .] directory containing lenses to upload
+
+FLAGS
+  -d, --domain=<value>  (required) domain where FHIR server is hosted (with http/https)
+  -e, --exclude=<value>  regex pattern to exclude files (applied to filename)
+  -f, --force           force bundle all lenses even if content is up to date
+  -s, --skip-valid      skip lenses that already have valid base64 content
+  -t, --skip-date       do not update the date field when bundling
+
+DESCRIPTION
+  Batch process, bundle, and upload multiple lenses to a FHIR server.
+  
+  This command combines the functionality of batch-bundle and upload. It discovers
+  all lens JSON files in the specified directory, bundles them with their corresponding
+  JavaScript files, and uploads them to a FHIR server. For each lens:
+  - Finds the corresponding JS file (exact or fallback match)
+  - Updates the content with base64-encoded JavaScript
+  - Updates the date field (unless --skip-date is used)
+  - Uploads to the FHIR server via POST (new) or PATCH (existing)
+  
+  The command uses the same matching logic as batch-bundle and the same upload
+  logic as the upload command.
+
+EXAMPLES
+  $ fhir-lens-bundler batch-upload -d https://fosps.gravitatehealth.eu/epi/api/fhir
+  $ fhir-lens-bundler batch-upload ./lenses -d https://fosps.gravitatehealth.eu/epi/api/fhir
+  $ fhir-lens-bundler batch-upload ./lenses -d https://fosps.gravitatehealth.eu/epi/api/fhir --skip-valid
+  $ fhir-lens-bundler batch-upload ./lenses -d https://fosps.gravitatehealth.eu/epi/api/fhir --force
+  $ fhir-lens-bundler batch-upload ./lenses -d https://fosps.gravitatehealth.eu/epi/api/fhir --exclude "test.*"
+  $ fhir-lens-bundler batch-upload ./lenses -d https://fosps.gravitatehealth.eu/epi/api/fhir -s -t -e "draft.*"
+```
+
+_See code: [src/commands/batch-upload.ts](https://github.com/Gravitate-Health/fhir-lens-bundler/blob/v0.1.2/src/commands/batch-upload.ts)_
 
 ## `fhir-lens-bundler lsenhancejs [DIRECTORY]`
 
