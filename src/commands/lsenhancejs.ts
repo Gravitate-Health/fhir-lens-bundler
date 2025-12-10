@@ -1,7 +1,6 @@
 import { Args, Command, Flags } from '@oclif/core'
 import * as path from 'node:path'
-
-const dirController = require('../controllers/dir-controller.js');
+import * as dirController from '../controllers/dir-controller.js';
 
 export default class Lsenhancejs extends Command {
   static args = {
